@@ -1,25 +1,7 @@
-# getting the id for existing vpc
-data "aws_vpc" "existing_vpc" { 
-    id = var.vpc_id 
+data "aws_vpc" "existing_vpc" {
+    id = var.vpc_id
     }
-
-
-# getting the id for existing subnets
-# data "aws_subnets" "subnets_for_rds" {
-#   filter {
-#       name   = "subnet-id"  # Filter by exact subnet IDs
-#       values = var.database_subnet_ids  # Your list of 2 IDs
-#     }
-#   }
-
-# data "aws_subnets" "subnets_for_ec2" {
-#   filter {
-#       name   = "subnet-id"  # Filter by exact subnet IDs
-#       values = var.app_subnet_ids  # Your list of 2 IDs
-#     }
-# }
-
-
+ 
 data "aws_subnets" "subnets_for_eks" {
   filter {
       name   = "subnet-id"  # Filter by exact subnet IDs
@@ -28,10 +10,9 @@ data "aws_subnets" "subnets_for_eks" {
 }
 
 
-
 # Tag private subnets as internal ELBs
 resource "aws_ec2_tag" "subnet_internal_elb" {
-  for_each    = toset(data.aws_subnets.subnet_for_eks.id)
+  for_each    = toset(data.aws_subnets.subnets_for_eks.ids)
   resource_id = each.value
   key         = "kubernetes.io/role/internal-elb"
   value       = "1"
@@ -74,9 +55,9 @@ source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
   # Required variables
-  cluster_name = "eks-xchat-clstr-dev"
+  cluster_name = "hac-crewonbrd-eks-01"
   vpc_id       = var.vpc_id
-  subnet_ids   = data.aws_subnets.subnets_for_eks.id
+  subnet_ids   = data.aws_subnets.subnets_for_eks.ids
   # Optional variables
   cluster_addons = {
     coredns                = {most_recent = true}
@@ -91,11 +72,11 @@ source  = "terraform-aws-modules/eks/aws"
   cluster_endpoint_public_access  = false
   cluster_enabled_log_types      = ["api", "audit", "authenticator"]
   cloudwatch_log_group_retention_in_days = 90
-  create_kms_key = false  #cloudwatch_log_group_kms_key_arn  = "arn:aws:kms:us-east-1:427942813953:key/660f4d14-74e8-4777-9b12-33895d9631e8"
+  create_kms_key = false  
   cluster_encryption_config      = {}
   # Node group configuration with additional IAM policies
   eks_managed_node_groups = {
-    worker-1 =    {
+    node-group-01 =    {
       min_size       = 2
       max_size       = 5
       desired_size   = 2
@@ -110,18 +91,5 @@ source  = "terraform-aws-modules/eks/aws"
     }
   }
   enable_cluster_creator_admin_permissions = true
-#   access_entries = {
-#   my-admin-role = {
-#     principal_arn = "arn:aws:iam::427942813953:user/Sarvesh" #can't be the iam role running terraform apply
-#     type          = "STANDARD"
-#     policy_associations = {
-#       admin = {
-#         policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-#         access_scope = {
-#           type = "cluster"
-#         }
-#       }
-#     }
-#   }
-# }
+  cluster_additional_security_group_ids = ["sg-08fd7aaadd78f6f85"]
 }

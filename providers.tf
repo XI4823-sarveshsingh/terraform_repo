@@ -13,8 +13,8 @@ provider "aws" {
 
 terraform {
   backend "s3" {
-    bucket = "xchat-tf-state-bucket"
-    key    = "dev/terraform.tfstate"
+    bucket = "hac-crewonbrd-tfstate"
+    key    = "prod/terraform.tfstate"
     region = "us-east-1"
   }
 }
