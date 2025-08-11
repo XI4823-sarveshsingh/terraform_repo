@@ -80,25 +80,25 @@ ec2_instances = {
     }
     create                = true
     name                  = "jenkins-instance-ec2"
-    instance_type         = "t3.micro" # Override default t3.micro
-    key_name              = "eks-bastion"
+    instance_type         = "t2.xlarge" 
+    key_name              = "jumpbox-key"
     associate_public_ip_address   = false
     root_block_device = [
       {
-        volume_size = 20 # Override default
+        volume_size = 100 # Override default
         volume_type = "gp3"
         encrypted   = false
       }
     ]
     tags = {
-      Environment = "dev"
-      Component   = "frontend"
+      Environment = "prod"
+      Component   = "jenkins"
     }
     availability_zone           = "us-east-1a"
     create_iam_instance_profile = true
     iam_role_name             = "jenkins-role-for-ec2"
     iam_role_policies = {
-      "s3-access" = "arn:aws:iam::aws:policy/AdministratorAccess"
+      "admin-access" = "arn:aws:iam::aws:policy/AdministratorAccess"
     }
   }
 }
