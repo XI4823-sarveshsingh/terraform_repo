@@ -1,0 +1,129 @@
+name: 'Terraform'
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions: write-all
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      run: terraform init
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Terraform Format
+      run: terraform fmt -list=true -diff -check
+
+    - name: Terraform validate
+      run: |
+        terraform validate
+
+    - name: tfsec IaC Scanner
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        additional_args: |
+          --var-file example.tfvars
+          --exclude aws-ec2-no-public-egress-sgr
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::474532148129:role/github-readonly
+        aws-region: ap-south-1
+        mask-aws-account-id: 'false'
+
+    - name: terraform-plan
+      id: tfplan
+      uses: dflook/terraform-plan@v1.29.1
+      with:
+        var_file: example.tfvars
+        add_github_comment: false
+      
+    - name: Checkov IaC Scanner
+      uses: bridgecrewio/checkov-action@v12.2401.0
+      with:
+        framework: terraform_plan
+        #display only failed checks
+        quiet: true
+        file: ${{ steps.tfplan.outputs.json_plan_path }}
+        skip_check: CKV2_AWS_5
+        # hop limit 2 is required by EKS when instance metadata service v2 is enabled (https://aws.amazon.com/about-aws/whats-new/2020/08/amazon-eks-supports-ec2-instance-metadata-service-v2/) 
+    
+  release:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    name: 'Release'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions: write-all
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Create release tag
+      id: create_new_tag
+      run: |
+        MAJOR=0
+        MINOR=0
+        current_tag=$(git tag --sort=-version:refname | head -n 1 | tr -d v)
+        old_tag=($(echo $current_tag | tr '.' ' '))
+        MAJOR_OLD=${old_tag[0]}
+        MINOR_OLD=${old_tag[1]}
+        echo "::set-output name=MAJOR_OLD::$MAJOR_OLD"
+        echo "::set-output name=MINOR_OLD::$MINOR_OLD"
+        echo "::set-output name=current_tag::$current_tag"
+        if [ ! -z $current_tag ];
+        then
+            if [ $MAJOR == $MAJOR_OLD ];
+            then
+                MAJOR_NEW=$MAJOR_OLD
+                MINOR_NEW=$((${MINOR_OLD} + 1))
+                NEW_TAG="v${MAJOR_NEW}.${MINOR_NEW}.0"
+                echo "::set-output name=tag::$NEW_TAG"
+            else
+                NEW_TAG="v${MAJOR}.${MINOR}.0"
+                echo "::set-output name=tag::$NEW_TAG"
+            fi
+        else
+            NEW_TAG="v0.1.0"
+            echo "::set-output name=tag::$NEW_TAG"
+        fi
+
+    - name: "Generate release changelog"
+      id: changelog
+      uses: heinrichreimer/github-changelog-generator-action@v2.3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create GitHub release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        body: ${{steps.changelog.outputs.changelog}}
+        tag_name: ${{ steps.create_new_tag.outputs.tag }}
+        release_name:  ${{ steps.create_new_tag.outputs.tag }}

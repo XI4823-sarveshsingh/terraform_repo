@@ -93,3 +93,61 @@ source  = "terraform-aws-modules/eks/aws"
   enable_cluster_creator_admin_permissions = true
   cluster_additional_security_group_ids = ["sg-08fd7aaadd78f6f85"]
 }
+
+module "ecr_repo" {
+  for_each = var.ecr_repositories 
+  source = "./modules/ecr"
+  region                          = var.region
+  name                            = each.value.name
+  type                            = each.value.type
+  image_tag_mutability            = each.value.image_tag_mutability
+  enable_force_delete             = each.value.enable_ecr_force_delete
+  encryption_type                 = each.value.encryption_type
+  enable_image_scan_on_push       = each.value.enable_image_scan_on_push
+  lifecycle_policy_path           = each.value.lifecycle_policy_path
+  permissions_policy_path         = each.value.permissions_policy_path
+  registry_policy_path            = each.value.registry_policy_path
+  pull_through_cache_rules        = each.value.pull_through_cache_rules
+  manage_registry_scanning_config = each.value.manage_registry_scanning_config
+  registry_scan_type              = each.value.registry_scan_type
+  registry_scan_rules             = each.value.registry_scan_rules
+  create_registry_replication_configuration = each.value.create_registry_replication_configuration
+}
+
+# security groups for ec2 instances 
+module "ec2" {
+  source = "./modules/ec2" # Path to your ec2 module
+
+  for_each = var.ec2_instances
+
+  region        = var.region
+  common_tags   = try(each.value.common_tags, {}) # Use default empty map if not specified
+  vpc_id        = var.vpc_id
+  ingress_rules = try(each.value.ingress_rules, []) # Use default empty list if not specified
+  egress_rules  = try(each.value.egress_rules, []) # Use default empty list if not specified
+  create                = each.value.create
+  name                  = each.value.name
+  subnet_id             = data.aws_subnets.subnets_for_eks.ids[0]
+  ami                   = try(each.value.ami, null) 
+  instance_type         = try(each.value.instance_type, null) 
+  associate_public_ip_address = try(each.value.associate_public_ip_address, false) 
+  user_data             = try(each.value.user_data, null)
+  key_name              = try(each.value.key_name, null)
+  iam_instance_profile  = try(each.value.iam_instance_profile, null)
+  monitoring            = try(each.value.monitoring, null)
+  root_block_device     = try(each.value.root_block_device, [])
+  ebs_block_device      = try(each.value.ebs_block_device, [])
+  tags                  = try(each.value.tags, {})
+  instance_tags         = try(each.value.instance_tags, {})
+  volume_tags           = try(each.value.volume_tags, {})
+  enable_volume_tags    = try(each.value.enable_volume_tags, true)
+  create_iam_instance_profile = try(each.value.create_iam_instance_profile, false)
+  iam_role_name              = try(each.value.iam_role_name, null)
+  iam_role_policies          = try(each.value.iam_role_policies, {})
+  iam_role_tags              = try(each.value.iam_role_tags, {})
+  create_spot_instance = try(each.value.create_spot_instance, false)
+  spot_price          = try(each.value.spot_price, null)
+
+  create_eip = try(each.value.create_eip, false)
+  eip_tags   = try(each.value.eip_tags, {})
+}
