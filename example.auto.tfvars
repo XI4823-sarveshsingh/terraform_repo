@@ -1,6 +1,7 @@
 vpc_id    = "vpc-0fc2a2b6df73c5152"
 app_subnet_ids = ["subnet-09ec22b6b1d143473", "subnet-06dcc9255ae6e5838", "subnet-0a95b4eed2fbabe2b"]
 eks_subnet_ids = ["subnet-09ec22b6b1d143473", "subnet-06dcc9255ae6e5838", "subnet-0a95b4eed2fbabe2b"]
+database_subnet_ids = ["subnet-0097e4acf8e627e6c", "subnet-0b8130b6a5dec6630", "subnet-0fe1ed6bced546d6d"]
 region = "us-east-1"
 
 ecr_repositories = {
@@ -108,7 +109,7 @@ rds_databases = {
   identifier = "hal-sbn-crew-onboarding-db"
 
     # Networking
-    vpc_security_group_ids = ["sg-0a04f87915aa99f17"]
+    vpc_security_group_ids = ["sg-0d8343f478e08e8da"]
     # Sizing & storage
     instance_class      = "db.m5.xlarge"
     storage_type        = "gp3"
