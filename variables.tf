@@ -14,6 +14,11 @@ variable "eks_subnet_ids"{
   type        = list(string)
 }
 
+variable "database_subnet_ids"{
+  description = "ID of the subnet in which DB deployment is to be done."
+  type        = list(string)
+}
+
 variable "region"{
   description = "Region in which deployment is to be done."
   type        = string
