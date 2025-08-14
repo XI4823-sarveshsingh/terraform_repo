@@ -115,39 +115,95 @@ module "ecr_repo" {
 }
 
 # security groups for ec2 instances 
-module "ec2" {
-  source = "./modules/ec2" # Path to your ec2 module
+# module "ec2" {
+#   source = "./modules/ec2" # Path to your ec2 module
 
-  for_each = var.ec2_instances
+#   for_each = var.ec2_instances
 
-  region        = var.region
-  common_tags   = try(each.value.common_tags, {}) # Use default empty map if not specified
-  vpc_id        = var.vpc_id
-  ingress_rules = try(each.value.ingress_rules, []) # Use default empty list if not specified
-  egress_rules  = try(each.value.egress_rules, []) # Use default empty list if not specified
-  create                = each.value.create
-  name                  = each.value.name
-  subnet_id             = data.aws_subnets.subnets_for_eks.ids[0]
-  ami                   = try(each.value.ami, null) 
-  instance_type         = try(each.value.instance_type, null) 
-  associate_public_ip_address = try(each.value.associate_public_ip_address, false) 
-  user_data             = try(each.value.user_data, null)
-  key_name              = try(each.value.key_name, null)
-  iam_instance_profile  = try(each.value.iam_instance_profile, null)
-  monitoring            = try(each.value.monitoring, null)
-  root_block_device     = try(each.value.root_block_device, [])
-  ebs_block_device      = try(each.value.ebs_block_device, [])
-  tags                  = try(each.value.tags, {})
-  instance_tags         = try(each.value.instance_tags, {})
-  volume_tags           = try(each.value.volume_tags, {})
-  enable_volume_tags    = try(each.value.enable_volume_tags, true)
-  create_iam_instance_profile = try(each.value.create_iam_instance_profile, false)
-  iam_role_name              = try(each.value.iam_role_name, null)
-  iam_role_policies          = try(each.value.iam_role_policies, {})
-  iam_role_tags              = try(each.value.iam_role_tags, {})
-  create_spot_instance = try(each.value.create_spot_instance, false)
-  spot_price          = try(each.value.spot_price, null)
+#   region        = var.region
+#   common_tags   = try(each.value.common_tags, {}) # Use default empty map if not specified
+#   vpc_id        = var.vpc_id
+#   ingress_rules = try(each.value.ingress_rules, []) # Use default empty list if not specified
+#   egress_rules  = try(each.value.egress_rules, []) # Use default empty list if not specified
+#   create                = each.value.create
+#   name                  = each.value.name
+#   subnet_id             = data.aws_subnets.subnets_for_eks.ids[0]
+#   ami                   = try(each.value.ami, null) 
+#   instance_type         = try(each.value.instance_type, null) 
+#   associate_public_ip_address = try(each.value.associate_public_ip_address, false) 
+#   user_data             = try(each.value.user_data, null)
+#   key_name              = try(each.value.key_name, null)
+#   iam_instance_profile  = try(each.value.iam_instance_profile, null)
+#   monitoring            = try(each.value.monitoring, null)
+#   root_block_device     = try(each.value.root_block_device, [])
+#   ebs_block_device      = try(each.value.ebs_block_device, [])
+#   tags                  = try(each.value.tags, {})
+#   instance_tags         = try(each.value.instance_tags, {})
+#   volume_tags           = try(each.value.volume_tags, {})
+#   enable_volume_tags    = try(each.value.enable_volume_tags, true)
+#   create_iam_instance_profile = try(each.value.create_iam_instance_profile, false)
+#   iam_role_name              = try(each.value.iam_role_name, null)
+#   iam_role_policies          = try(each.value.iam_role_policies, {})
+#   iam_role_tags              = try(each.value.iam_role_tags, {})
+#   create_spot_instance = try(each.value.create_spot_instance, false)
+#   spot_price          = try(each.value.spot_price, null)
 
-  create_eip = try(each.value.create_eip, false)
-  eip_tags   = try(each.value.eip_tags, {})
+#   create_eip = try(each.value.create_eip, false)
+#   eip_tags   = try(each.value.eip_tags, {})
+# }
+
+module "rds_database" {
+  for_each = var.rds_databases
+
+  source = "./modules/rds"
+
+  # Networking
+  subnet_ids = data.aws_subnets.subnets_for_rds.ids
+  vpc_security_group_ids = each.value.vpc_security_group_ids
+
+  # Identification
+  identifier  = each.value.identifier
+
+  # Engine & versions
+  engine               = each.value.engine
+  engine_version       = each.value.engine_version
+  family               = each.value.family
+
+  # Sizing & storage
+  instance_class     = each.value.instance_class
+  storage_type       = each.value.storage_type
+  allocated_storage  = each.value.allocated_storage
+  max_allocated_storage = each.value.max_allocated_storage
+  port               = each.value.port
+  storage_encrypted  = each.value.storage_encrypted
+  deletion_protection = each.value.deletion_protection
+
+  # Database
+  db_name       = each.value.db_name
+  username      = each.value.username
+  password      = each.value.password
+  manage_master_user_password = each.value.manage_master_user_password
+
+  # Backups & maintenance
+  backup_retention_period    = each.value.backup_retention_period
+  backup_window              = each.value.backup_window
+  maintenance_window         = each.value.maintenance_window
+  auto_minor_version_upgrade = each.value.auto_minor_version_upgrade
+  skip_final_snapshot        = each.value.skip_final_snapshot
+  copy_tags_to_snapshot      = each.value.copy_tags_to_snapshot
+  multi_az                  = each.value.multi_az
+  enabled_cloudwatch_logs_exports = each.value.enabled_cloudwatch_logs_exports
+
+  # Misc
+  kms_key_id          = each.value.kms_key_id
+  create_monitoring_role = each.value.create_monitoring_role
+  monitoring_role_name = each.value.monitoring_role_name
+  monitoring_interval = each.value.monitoring_interval
+  db_subnet_group_name       = each.value.db_subnet_group_name
+  create_db_instance         = each.value.create_db_instance
+  create_db_parameter_group  = each.value.create_db_parameter_group
+  create_db_subnet_group     = each.value.create_db_subnet_group
+
+  # Tags
+  tags       = each.value.tags
 }
