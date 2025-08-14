@@ -9,6 +9,13 @@ data "aws_subnets" "subnets_for_eks" {
     }
 }
 
+data "aws_subnets" "subnets_for_rds" {
+  filter {
+      name   = "subnet-id"  # Filter by exact subnet IDs
+      values = var.database_subnet_ids  # Your list of 2 IDs
+    }
+  }
+
 
 # Tag private subnets as internal ELBs
 resource "aws_ec2_tag" "subnet_internal_elb" {
